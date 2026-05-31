@@ -29,6 +29,18 @@ const generatePropertyId = (existingProperties) => {
   return newId;
 };
 
+// --- HELPER: แปลง URL Google Drive ให้แสดงผลเป็นรูปภาพได้ ---
+const getWorkingImageUrl = (url) => {
+  if (!url) return '';
+  // ดึง ID ออกมาจากลิงก์ uc?export=view&id=...
+  const idMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (idMatch && idMatch[1]) {
+    // ใช้ Endpoint thumbnail แทนเพื่อแก้ปัญหาการบล็อกแสดงผลของ Google (sz=w1000 คือปรับความกว้างเป็น 1000px เพื่อความคมชัด)
+    return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
+  }
+  return url;
+};
+
 const PROPERTY_TYPES = ['บ้านเดี่ยว', 'ทาวน์โฮม', 'ทาวน์เฮ้าส์', 'คอนโด', 'อพาร์ทเม้นท์'];
 const TRANSACTION_TYPES = [{ id: 'sale', label: 'ขาย' }, { id: 'rent', label: 'ให้เช่า' }];
 
@@ -40,7 +52,7 @@ export default function App() {
   const [selectedProperty, setSelectedProperty] = useState(null); 
   
   // States สำหรับดึงข้อมูลจาก Server
-  const [properties, setProperties] = useState([]);
+  const [properties, setProperties] = useState(initialProperties); // กำหนดค่าเริ่มต้นเป็นข้อมูลจำลองเผื่อโหลดพลาด
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   
@@ -59,7 +71,7 @@ export default function App() {
         const response = await fetch(`${GAS_URL}?action=getProperties`);
         const result = await response.json();
         
-        if (result.status === 'success' && result.data) {
+        if (result.status === 'success' && result.data && result.data.length > 0) {
           // จัดฟอร์แมตข้อมูลให้เข้ากับโครงสร้างแอป
           const formattedData = result.data.map(p => ({
             id: p.propertyId, // ใช้ propertyId เป็น id หลักในฝั่งแอป
@@ -71,13 +83,18 @@ export default function App() {
             lat: Number(p.lat) || 13.920,
             lng: Number(p.lng) || 100.650,
             desc: p.desc,
-            images: p.images ? p.images.split(',') : []
+            // แปลง URL รูปภาพที่ดึงมาให้เป็นรูปแบบที่แสดงผลได้ 100%
+            images: p.images ? p.images.split(',').map(getWorkingImageUrl) : []
           }));
           // เรียงจากใหม่สุด (ล่าสุด) ไปเก่า
           setProperties(formattedData.reverse());
+        } else if (result.status === 'success' && result.data.length === 0) {
+           setProperties([]); // ฐานข้อมูลยังว่างเปล่า
         }
       } catch (error) {
-        console.error("Failed to fetch properties:", error);
+        console.error("Failed to fetch properties. Using mock data instead:", error);
+        // หากดึงข้อมูลล้มเหลว (เช่น ติด CORS, เน็ตหลุด) จะใช้ initialProperties แสดงผลแทน
+        setProperties(initialProperties);
       } finally {
         setIsLoadingData(false);
       }
@@ -477,7 +494,7 @@ export default function App() {
         }
 
         const newProp = {
-          ...formData, id: newPropId, propertyId: newPropId, price: Number(formData.price), images: finalImages
+          ...formData, id: newPropId, propertyId: newPropId, price: Number(formData.price), images: finalImages.map(getWorkingImageUrl)
         };
 
         setProperties([newProp, ...properties]);
