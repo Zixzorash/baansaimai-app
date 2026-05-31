@@ -50,7 +50,13 @@ const TRANSACTION_TYPES = [{ id: 'sale', label: 'ขาย' }, { id: 'rent', lab
 
 export default function App() {
   // --- STATES ---
-  const [currentUser, setCurrentUser] = useState(null);
+  
+  // 1. ดึงข้อมูล User จาก localStorage เพื่อให้จำการเข้าสู่ระบบ
+  const [currentUser, setCurrentUser] = useState(() => {
+    const savedUser = localStorage.getItem('bannSaimaiUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   const [currentView, setCurrentView] = useState('map'); 
   const [previousView, setPreviousView] = useState('map'); 
   const [selectedProperty, setSelectedProperty] = useState(null); 
@@ -134,11 +140,24 @@ export default function App() {
     if (!currentUser) { alert("กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด"); setCurrentView('login'); return; }
     const isFav = currentUser.favorites.includes(propertyId);
     let newFavs = isFav ? currentUser.favorites.filter(id => id !== propertyId) : [...currentUser.favorites, propertyId];
-    setCurrentUser({ ...currentUser, favorites: newFavs });
+    
+    const updatedUser = { ...currentUser, favorites: newFavs };
+    setCurrentUser(updatedUser);
+    localStorage.setItem('bannSaimaiUser', JSON.stringify(updatedUser)); // บันทึกรายการโปรดลงเครื่องด้วย
   };
 
-  const handleLoginSuccess = (user) => { setCurrentUser(user); setCurrentView('map'); };
-  const handleLogout = () => { setCurrentUser(null); setCurrentView('map'); };
+  const handleLoginSuccess = (user) => { 
+    setCurrentUser(user); 
+    localStorage.setItem('bannSaimaiUser', JSON.stringify(user)); // จำการเข้าสู่ระบบ
+    setCurrentView('map'); 
+  };
+  
+  const handleLogout = () => { 
+    setCurrentUser(null); 
+    localStorage.removeItem('bannSaimaiUser'); // ลบข้อมูลการเข้าสู่ระบบออก
+    setCurrentView('map'); 
+  };
+  
   const openDetail = (prop, fromView) => { setSelectedProperty(prop); setPreviousView(fromView); setCurrentView('detail'); };
   const resetFilters = () => { setFilters({ types: [], transactionTypes: [], minPrice: '', maxPrice: '' }); };
 
