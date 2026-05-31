@@ -1,4 +1,3 @@
-react
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Settings, Loader2, Home, KeyRound } from 'lucide-react';
 
