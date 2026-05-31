@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar } from 'lucide-react';
+import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight } from 'lucide-react';
 
 // --- 1. ตั้งค่า Google Apps Script URL ---
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxIRSZw360uv5w2mEd-jqPMAFfvKV54QYEX2EF2FsSLFf4x6UP3hiWFf84m_N-WIrE1/exec";
@@ -50,16 +50,20 @@ const TRANSACTION_TYPES = [{ id: 'sale', label: 'ขาย' }, { id: 'rent', lab
 
 export default function App() {
   // --- STATES ---
-  
-  // 1. ดึงข้อมูล User จาก localStorage เพื่อให้จำการเข้าสู่ระบบ
+  // ใช้ localStorage เพื่อจำการล็อกอินแม้จะรีเฟรชหน้าเว็บ
   const [currentUser, setCurrentUser] = useState(() => {
-    const savedUser = localStorage.getItem('bannSaimaiUser');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const savedUser = localStorage.getItem('baansaimai_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (error) {
+      return null;
+    }
   });
 
   const [currentView, setCurrentView] = useState('map'); 
   const [previousView, setPreviousView] = useState('map'); 
   const [selectedProperty, setSelectedProperty] = useState(null); 
+  const [fullscreenImageIndex, setFullscreenImageIndex] = useState(null); // สถานะสำหรับดูรูปเต็มจอ
   
   // States สำหรับดึงข้อมูลจาก Server
   const [properties, setProperties] = useState([]);
@@ -75,7 +79,6 @@ export default function App() {
   useEffect(() => { 
     document.title = "บ้านสายไหม - ขายบ้านสายไหม เช่าบ้านสายไหม คอนโดสายไหม"; 
     
-    // ดึงข้อมูลทรัพย์จาก Google Sheets
     const fetchProperties = async () => {
       if (!GAS_URL) {
         setProperties(initialProperties);
@@ -105,7 +108,7 @@ export default function App() {
             lat: Number(p.lat) || 13.920,
             lng: Number(p.lng) || 100.650,
             desc: p.desc,
-            date: p.date, // เพิ่มฟิลด์วันที่
+            date: p.date,
             images: p.images ? p.images.split(',').map(getWorkingImageUrl) : []
           }));
           setProperties(formattedData.reverse());
@@ -143,22 +146,27 @@ export default function App() {
     
     const updatedUser = { ...currentUser, favorites: newFavs };
     setCurrentUser(updatedUser);
-    localStorage.setItem('bannSaimaiUser', JSON.stringify(updatedUser)); // บันทึกรายการโปรดลงเครื่องด้วย
+    localStorage.setItem('baansaimai_user', JSON.stringify(updatedUser)); // บันทึกลงเครื่อง
   };
 
   const handleLoginSuccess = (user) => { 
     setCurrentUser(user); 
-    localStorage.setItem('bannSaimaiUser', JSON.stringify(user)); // จำการเข้าสู่ระบบ
+    localStorage.setItem('baansaimai_user', JSON.stringify(user)); // บันทึกลงเครื่องเมื่อล็อกอิน
     setCurrentView('map'); 
   };
   
   const handleLogout = () => { 
     setCurrentUser(null); 
-    localStorage.removeItem('bannSaimaiUser'); // ลบข้อมูลการเข้าสู่ระบบออก
+    localStorage.removeItem('baansaimai_user'); // ลบจากเครื่องเมื่อออกจากระบบ
     setCurrentView('map'); 
   };
-  
-  const openDetail = (prop, fromView) => { setSelectedProperty(prop); setPreviousView(fromView); setCurrentView('detail'); };
+
+  const openDetail = (prop, fromView) => { 
+    setSelectedProperty(prop); 
+    setPreviousView(fromView); 
+    setCurrentView('detail'); 
+  };
+
   const resetFilters = () => { setFilters({ types: [], transactionTypes: [], minPrice: '', maxPrice: '' }); };
 
   // --- FILTER PROPERTIES ---
@@ -395,11 +403,16 @@ export default function App() {
       window.open(lineUrl, '_blank');
     };
 
+    const handleDirections = () => {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${prop.lat},${prop.lng}`;
+      window.open(url, '_blank');
+    };
+
     return (
       <div className="flex flex-col h-full bg-gray-900 overflow-y-auto pb-6 w-full relative">
-        <div className="absolute top-0 w-full p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/70 to-transparent pt-10">
-          <button onClick={() => setCurrentView(previousView)} className="bg-gray-900/60 p-2.5 rounded-full text-white backdrop-blur-md border border-gray-600/50"><ChevronLeft size={24} /></button>
-          <button onClick={() => toggleFavorite(prop.id)} className="bg-gray-900/60 p-2.5 rounded-full text-white backdrop-blur-md border border-gray-600/50">
+        <div className="absolute top-0 w-full p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/70 to-transparent pt-10 pointer-events-none">
+          <button onClick={() => { setCurrentView(previousView); setFullscreenImageIndex(null); }} className="pointer-events-auto bg-gray-900/60 p-2.5 rounded-full text-white backdrop-blur-md border border-gray-600/50 hover:bg-gray-800 transition-colors"><ChevronLeft size={24} /></button>
+          <button onClick={() => toggleFavorite(prop.id)} className="pointer-events-auto bg-gray-900/60 p-2.5 rounded-full text-white backdrop-blur-md border border-gray-600/50 hover:bg-gray-800 transition-colors">
             <Heart size={24} className={isFav ? "text-red-500 fill-red-500" : "text-gray-200"} />
           </button>
         </div>
@@ -407,7 +420,13 @@ export default function App() {
         <div className="w-full aspect-[4/3] relative bg-gray-800 overflow-x-auto flex snap-x snap-mandatory hide-scrollbar shrink-0">
           {prop.images && prop.images.length > 0 ? (
             prop.images.map((img, idx) => (
-              <img key={idx} src={img} alt={`${prop.title}-${idx}`} className="w-full h-full object-cover shrink-0 snap-center" />
+              <img 
+                key={idx} 
+                src={img} 
+                alt={`${prop.title}-${idx}`} 
+                onClick={() => setFullscreenImageIndex(idx)}
+                className="w-full h-full object-cover shrink-0 snap-center cursor-pointer" 
+              />
             ))
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-500">ไม่มีรูปภาพ</div>
@@ -425,7 +444,6 @@ export default function App() {
               <span className="bg-gray-800 text-gray-300 text-xs px-3 py-1.5 rounded-lg border border-gray-700 font-bold">{transType} - {prop.propType}</span>
               <span className="bg-gray-800 text-gray-400 text-xs px-2 py-1.5 rounded-lg border border-gray-700 flex items-center gap-1"><MapPin size={12}/> สายไหม</span>
               
-              {/* ป้ายแสดงวันที่ลงประกาศ */}
               {prop.date && (
                 <span className="bg-gray-800 text-gray-400 text-xs px-2 py-1.5 rounded-lg border border-gray-700 flex items-center gap-1">
                   <Calendar size={12}/> ลงเมื่อ: {formatDate(prop.date)}
@@ -440,14 +458,27 @@ export default function App() {
           <div className={`text-3xl font-extrabold my-2 ${prop.type === 'rent' ? 'text-blue-400' : 'text-red-400'}`}>
             ฿{prop.price.toLocaleString()} {prop.type === 'rent' && <span className="text-base font-normal text-gray-400">/ เดือน</span>}
           </div>
+
+          {/* ปรับปรุงเลย์เอาต์ปุ่มการกระทำ เลื่อนมาไว้ตรงนี้ตามคำขอ */}
+          <div className="mt-6 grid grid-cols-3 gap-3 mb-2">
+            <button className="flex flex-col items-center justify-center gap-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-white py-3 rounded-2xl font-bold shadow-sm transition-colors active:scale-95">
+              <Phone size={22} className="text-blue-400" />
+              <span className="text-xs">โทร</span>
+            </button>
+            <button onClick={handleLineShare} className="flex flex-col items-center justify-center gap-1.5 bg-[#00B900] hover:bg-[#009900] text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-900/20 transition-colors active:scale-95">
+              <MessageCircle size={22} />
+              <span className="text-xs">LINE</span>
+            </button>
+            <button onClick={handleDirections} className="flex flex-col items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-900/20 transition-colors active:scale-95">
+              <Navigation size={22} />
+              <span className="text-xs">เส้นทาง</span>
+            </button>
+          </div>
+
           <hr className="border-gray-800 my-6" />
+          
           <h3 className="text-lg font-bold text-white mb-3">รายละเอียดทรัพย์</h3>
           <p className="text-gray-400 leading-relaxed text-sm whitespace-pre-wrap">{prop.desc}</p>
-
-          <div className="mt-8 flex gap-3">
-            <button className="flex-1 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2"><Phone size={20} className="text-blue-400" /> โทร</button>
-            <button onClick={handleLineShare} className="flex-1 bg-[#00B900] hover:bg-[#009900] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/20"><MessageCircle size={20} /> LINE</button>
-          </div>
         </div>
       </div>
     );
@@ -458,7 +489,6 @@ export default function App() {
     const defaultLat = 13.920;
     const defaultLng = 100.650;
     
-    // ตั้งค่าเริ่มต้นวันเป็นวันนี้ (รูปแบบ YYYY-MM-DD)
     const todayStr = new Date().toISOString().split('T')[0];
 
     const [formData, setFormData] = useState({
@@ -556,7 +586,6 @@ export default function App() {
         setProperties([newProp, ...properties]);
         alert(`บันทึกทรัพย์รหัส ${newPropId} สำเร็จ!`);
         
-        // คืนค่าฟอร์มกลับเป็นค่าเริ่มต้น
         setFormData({ title: '', propType: 'บ้านเดี่ยว', type: 'rent', price: '', desc: '', lat: defaultLat, lng: defaultLng, date: todayStr });
         setImageFiles([]); setImagePreviews([]); setNewPropId(generatePropertyId([newProp, ...properties]));
         if(markerRef.current) markerRef.current.setLatLng([defaultLat, defaultLng]);
@@ -642,7 +671,6 @@ export default function App() {
                 <input type="number" required className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg p-3 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="เช่น 15000" />
               </div>
               <div>
-                {/* ช่องกรอกวันที่ลงประกาศ */}
                 <label className="block text-sm font-bold text-gray-400 mb-1">วันที่ลงประกาศ</label>
                 <input type="date" required className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg p-3 outline-none" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
               </div>
@@ -904,8 +932,8 @@ export default function App() {
     <div className="p-6 pb-6 h-full bg-gray-900 overflow-y-auto w-full">
       <div className="bg-gray-800 rounded-2xl shadow-md p-6 flex flex-col items-center border border-gray-700">
         <div className="w-20 h-20 bg-blue-900/50 rounded-full flex items-center justify-center text-blue-400 mb-4 border border-blue-800"><User size={40} /></div>
-        <h2 className="text-xl font-bold text-white">{currentUser.username}</h2>
-        <p className="text-sm text-gray-300 bg-gray-700 px-3 py-1 rounded-full mt-2 border border-gray-600">{currentUser.role === 'admin' ? 'Administrator' : 'Member'}</p>
+        <h2 className="text-xl font-bold text-white">{currentUser?.username}</h2>
+        <p className="text-sm text-gray-300 bg-gray-700 px-3 py-1 rounded-full mt-2 border border-gray-600">{currentUser?.role === 'admin' ? 'Administrator' : 'Member'}</p>
         <button onClick={handleLogout} className="mt-8 w-full flex items-center justify-center bg-red-900/20 text-red-400 border border-red-900/50 py-3 rounded-xl font-bold"><LogOut size={20} className="mr-2" /> ออกจากระบบ</button>
       </div>
     </div>
@@ -976,8 +1004,49 @@ export default function App() {
         </nav>
       )}
 
-      {/* Overlays */}
+      {/* Filter Overlay */}
       <FilterPanel />
+
+      {/* Fullscreen Image Overlay (ป็อปอัปดูรูปเต็มจอ) */}
+      {fullscreenImageIndex !== null && selectedProperty && selectedProperty.images && (
+        <div className="fixed inset-0 bg-black z-[3000] flex flex-col">
+          <div className="p-4 flex justify-between items-center z-10 absolute top-0 w-full bg-gradient-to-b from-black/70 to-transparent pt-10">
+            <button onClick={() => setFullscreenImageIndex(null)} className="bg-gray-900/60 p-2.5 rounded-full text-white backdrop-blur-md border border-gray-600/50 hover:bg-gray-800 transition-colors">
+              <X size={24} />
+            </button>
+            <div className="text-white font-bold text-sm bg-black/50 px-3 py-1 rounded-full">
+              {fullscreenImageIndex + 1} / {selectedProperty.images.length}
+            </div>
+          </div>
+          
+          <div className="flex-1 flex items-center justify-center overflow-hidden relative">
+            <img 
+              src={selectedProperty.images[fullscreenImageIndex]} 
+              alt="fullscreen" 
+              className="w-full h-auto max-h-full object-contain" 
+            />
+            
+            {fullscreenImageIndex > 0 && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex(prev => prev - 1); }} 
+                className="absolute left-4 p-3 bg-black/50 text-white rounded-full hover:bg-black/70 active:scale-95 transition-all"
+              >
+                 <ChevronLeft size={28} />
+              </button>
+            )}
+            
+            {fullscreenImageIndex < selectedProperty.images.length - 1 && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex(prev => prev + 1); }} 
+                className="absolute right-4 p-3 bg-black/50 text-white rounded-full hover:bg-black/70 active:scale-95 transition-all"
+              >
+                 <ChevronRight size={28} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
