@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound } from 'lucide-react';
+import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar } from 'lucide-react';
 
 // --- 1. ตั้งค่า Google Apps Script URL ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxtKdcie6-wNXYzTCOszGL89Vee9giiAaTocs7m5S0YhPkp0nCoSmLr3EHYFnETBhSx/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxIRSZw360uv5w2mEd-jqPMAFfvKV54QYEX2EF2FsSLFf4x6UP3hiWFf84m_N-WIrE1/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
@@ -32,14 +32,18 @@ const generatePropertyId = (existingProperties) => {
 // --- HELPER: แปลง URL Google Drive ให้แสดงผลเป็นรูปภาพได้ ---
 const getWorkingImageUrl = (url) => {
   if (!url) return '';
-  // ดึง ID ออกมาจากลิงก์ uc?export=view&id=...
   const idMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
   if (idMatch && idMatch[1]) {
-    // ใช้ Endpoint thumbnail แทนเพื่อแก้ปัญหาการบล็อกแสดงผลของ Google (sz=w1000 คือปรับความกว้างเป็น 1000px เพื่อความคมชัด)
     return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
   }
   return url;
 };
+
+// --- MOCK DATA (Fallback ข้อมูลสำรองกันเว็บหน้าขาว) ---
+const initialProperties = [
+  { id: 1, propertyId: 'SM-1001', type: 'rent', propType: 'บ้านเดี่ยว', price: 15000, title: 'บ้านเดี่ยว 2 ชั้น ซอยพหลโยธิน 54/1', lat: 13.921, lng: 100.641, images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'], desc: 'บ้านสวยพร้อมอยู่ 3 ห้องนอน 2 ห้องน้ำ', date: '2026-06-01' },
+  { id: 2, propertyId: 'SM-1002', type: 'sale', propType: 'ทาวน์โฮม', price: 2500000, title: 'ทาวน์โฮม โครงการใหม่ สายไหม 78', lat: 13.915, lng: 100.662, images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80'], desc: 'ทาวน์โฮมสไตล์โมเดิร์น 2 ชั้น ทำเลดี ติดถนนใหญ่', date: '2026-06-01' },
+];
 
 const PROPERTY_TYPES = ['บ้านเดี่ยว', 'ทาวน์โฮม', 'ทาวน์เฮ้าส์', 'คอนโด', 'อพาร์ทเม้นท์'];
 const TRANSACTION_TYPES = [{ id: 'sale', label: 'ขาย' }, { id: 'rent', label: 'ให้เช่า' }];
@@ -52,7 +56,7 @@ export default function App() {
   const [selectedProperty, setSelectedProperty] = useState(null); 
   
   // States สำหรับดึงข้อมูลจาก Server
-  const [properties, setProperties] = useState(initialProperties); // กำหนดค่าเริ่มต้นเป็นข้อมูลจำลองเผื่อโหลดพลาด
+  const [properties, setProperties] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   
@@ -67,33 +71,43 @@ export default function App() {
     
     // ดึงข้อมูลทรัพย์จาก Google Sheets
     const fetchProperties = async () => {
+      if (!GAS_URL) {
+        setProperties(initialProperties);
+        setIsLoadingData(false);
+        return;
+      }
+
       try {
         const response = await fetch(`${GAS_URL}?action=getProperties`);
-        const result = await response.json();
+        
+        const textData = await response.text();
+        let result;
+        try {
+          result = JSON.parse(textData);
+        } catch (e) {
+          throw new Error("Invalid Server Response");
+        }
         
         if (result.status === 'success' && result.data && result.data.length > 0) {
-          // จัดฟอร์แมตข้อมูลให้เข้ากับโครงสร้างแอป
           const formattedData = result.data.map(p => ({
-            id: p.propertyId, // ใช้ propertyId เป็น id หลักในฝั่งแอป
+            id: p.propertyId, 
             propertyId: p.propertyId,
-            type: p.type, // 'rent' หรือ 'sale'
+            type: p.type, 
             propType: p.propType,
             price: Number(p.price) || 0,
             title: p.title,
             lat: Number(p.lat) || 13.920,
             lng: Number(p.lng) || 100.650,
             desc: p.desc,
-            // แปลง URL รูปภาพที่ดึงมาให้เป็นรูปแบบที่แสดงผลได้ 100%
+            date: p.date, // เพิ่มฟิลด์วันที่
             images: p.images ? p.images.split(',').map(getWorkingImageUrl) : []
           }));
-          // เรียงจากใหม่สุด (ล่าสุด) ไปเก่า
           setProperties(formattedData.reverse());
-        } else if (result.status === 'success' && result.data.length === 0) {
-           setProperties([]); // ฐานข้อมูลยังว่างเปล่า
+        } else {
+          setProperties(initialProperties);
         }
       } catch (error) {
-        console.error("Failed to fetch properties. Using mock data instead:", error);
-        // หากดึงข้อมูลล้มเหลว (เช่น ติด CORS, เน็ตหลุด) จะใช้ initialProperties แสดงผลแทน
+        console.error("Failed to fetch properties:", error);
         setProperties(initialProperties);
       } finally {
         setIsLoadingData(false);
@@ -344,6 +358,17 @@ export default function App() {
     const isFav = currentUser?.favorites?.includes(prop.id);
     const transType = prop.type === 'rent' ? 'เช่า' : 'ขาย';
 
+    // แปลงรูปแบบวันที่เป็นภาษาไทย
+    const formatDate = (dateStr) => {
+      if(!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch (e) {
+        return dateStr;
+      }
+    };
+
     const handleLineShare = () => {
       const propertyUrl = `https://baansaimai.com/property/${prop.propertyId}`;
       const message = `สวัสดีครับ/ค่ะ สนใจสอบถามข้อมูลเพิ่มเติม รหัสทรัพย์: ${prop.propertyId}\nหัวข้อ: ${prop.title}\nราคา: ${prop.price.toLocaleString()} บาท\nลิงก์: ${propertyUrl}`;
@@ -380,8 +405,16 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="bg-gray-800 text-gray-300 text-xs px-3 py-1.5 rounded-lg border border-gray-700 font-bold">{transType} - {prop.propType}</span>
               <span className="bg-gray-800 text-gray-400 text-xs px-2 py-1.5 rounded-lg border border-gray-700 flex items-center gap-1"><MapPin size={12}/> สายไหม</span>
+              
+              {/* ป้ายแสดงวันที่ลงประกาศ */}
+              {prop.date && (
+                <span className="bg-gray-800 text-gray-400 text-xs px-2 py-1.5 rounded-lg border border-gray-700 flex items-center gap-1">
+                  <Calendar size={12}/> ลงเมื่อ: {formatDate(prop.date)}
+                </span>
+              )}
+
             </div>
-            <span className="text-gray-500 text-xs font-mono bg-gray-800 px-2 py-1 rounded border border-gray-700">ID: {prop.propertyId}</span>
+            <span className="text-gray-500 text-xs font-mono bg-gray-800 px-2 py-1 rounded border border-gray-700 mt-1">ID: {prop.propertyId}</span>
           </div>
           
           <h1 className="text-2xl font-bold text-white leading-tight mb-2">{prop.title}</h1>
@@ -405,8 +438,12 @@ export default function App() {
   const AdminView = () => {
     const defaultLat = 13.920;
     const defaultLng = 100.650;
+    
+    // ตั้งค่าเริ่มต้นวันเป็นวันนี้ (รูปแบบ YYYY-MM-DD)
+    const todayStr = new Date().toISOString().split('T')[0];
+
     const [formData, setFormData] = useState({
-      title: '', propType: 'บ้านเดี่ยว', type: 'rent', price: '', desc: '', lat: defaultLat, lng: defaultLng
+      title: '', propType: 'บ้านเดี่ยว', type: 'rent', price: '', desc: '', lat: defaultLat, lng: defaultLng, date: todayStr
     });
     const [newPropId, setNewPropId] = useState('');
     const [imageFiles, setImageFiles] = useState([]); 
@@ -500,7 +537,8 @@ export default function App() {
         setProperties([newProp, ...properties]);
         alert(`บันทึกทรัพย์รหัส ${newPropId} สำเร็จ!`);
         
-        setFormData({ title: '', propType: 'บ้านเดี่ยว', type: 'rent', price: '', desc: '', lat: defaultLat, lng: defaultLng });
+        // คืนค่าฟอร์มกลับเป็นค่าเริ่มต้น
+        setFormData({ title: '', propType: 'บ้านเดี่ยว', type: 'rent', price: '', desc: '', lat: defaultLat, lng: defaultLng, date: todayStr });
         setImageFiles([]); setImagePreviews([]); setNewPropId(generatePropertyId([newProp, ...properties]));
         if(markerRef.current) markerRef.current.setLatLng([defaultLat, defaultLng]);
         if(adminMapInstance.current) adminMapInstance.current.setView([defaultLat, defaultLng], 13);
@@ -514,12 +552,12 @@ export default function App() {
     };
 
     const handleExportCSV = () => {
-      const headers = ['propertyId', 'type', 'propType', 'price', 'title', 'lat', 'lng', 'desc'];
+      const headers = ['propertyId', 'type', 'propType', 'price', 'title', 'lat', 'lng', 'desc', 'date'];
       const csvRows = [headers.join(',')];
       properties.forEach(p => {
         const safeTitle = `"${p.title.replace(/"/g, '""')}"`;
         const safeDesc = `"${p.desc.replace(/"/g, '""').replace(/\n/g, ' ')}"`;
-        const row = [p.propertyId, p.type, p.propType, p.price, safeTitle, p.lat, p.lng, safeDesc];
+        const row = [p.propertyId, p.type, p.propType, p.price, safeTitle, p.lat, p.lng, safeDesc, p.date];
         csvRows.push(row.join(','));
       });
       const blob = new Blob(["\ufeff" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -579,9 +617,16 @@ export default function App() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-gray-400 mb-1">ราคา (บาท)</label>
-              <input type="number" required className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg p-3 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="เช่น 15000" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-400 mb-1">ราคา (บาท)</label>
+                <input type="number" required className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg p-3 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="เช่น 15000" />
+              </div>
+              <div>
+                {/* ช่องกรอกวันที่ลงประกาศ */}
+                <label className="block text-sm font-bold text-gray-400 mb-1">วันที่ลงประกาศ</label>
+                <input type="date" required className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg p-3 outline-none" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+              </div>
             </div>
 
             <div>
