@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight, ShieldCheck, FileText } from 'lucide-react';
+import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight } from 'lucide-react';
 
 // --- 1. ตั้งค่า Google Apps Script URL ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbx-uR5hVHYmotP6mBgJtK7thVuLxZE00KvPUdvb83kNCeNipLXbErckHMlKi6jc2g/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxIRSZw360uv5w2mEd-jqPMAFfvKV54QYEX2EF2FsSLFf4x6UP3hiWFf84m_N-WIrE1/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
@@ -86,7 +86,13 @@ export default function App() {
         const result = JSON.parse(textData);
         
         if (result.status === 'success') {
-          handleLoginSuccess({ id: Date.now().toString(), username: result.user.username, email: result.user.email, role: result.user.role, favorites: [] });
+          handleLoginSuccess({ 
+            id: Date.now().toString(), 
+            username: result.user.username, 
+            email: result.user.email, 
+            role: result.user.role, 
+            favorites: result.user.favorites || [] // โหลดรายการโปรดที่เคยบันทึกไว้
+          });
         } else {
           alert('ล็อกอินผ่าน LINE ล้มเหลว: ' + result.message);
         }
@@ -100,7 +106,6 @@ export default function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     if (code) {
-      // ลบ ?code ออกจาก URL ให้สะอาดตา
       window.history.replaceState({}, document.title, window.location.pathname);
       processLineLoginCallback(code);
     }
@@ -141,11 +146,23 @@ export default function App() {
   // --- HANDLERS ---
   const toggleFavorite = (propertyId) => {
     if (!currentUser) { alert("กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด"); setCurrentView('login'); return; }
+    
     const isFav = currentUser.favorites.includes(propertyId);
     let newFavs = isFav ? currentUser.favorites.filter(id => id !== propertyId) : [...currentUser.favorites, propertyId];
     const updatedUser = { ...currentUser, favorites: newFavs };
+    
+    // 1. อัปเดตที่หน้าจอ
     setCurrentUser(updatedUser);
     localStorage.setItem('baansaimai_user', JSON.stringify(updatedUser)); 
+
+    // 2. ส่งข้อมูลไปเซฟที่หลังบ้าน
+    if (GAS_URL && currentUser.username !== 'ผู้ดูแลระบบ') {
+      fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'updateFavorites', username: currentUser.username, favorites: newFavs }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      }).catch(err => console.error("Sync Favorite Error", err));
+    }
   };
 
   const handleLoginSuccess = (user) => { setCurrentUser(user); localStorage.setItem('baansaimai_user', JSON.stringify(user)); setCurrentView('map'); };
@@ -283,13 +300,6 @@ export default function App() {
         });
       });
     }, [leafletLoaded, filteredProperties, isLoadingData]);
-
-    // Force map resize when window size changes (responsive fix)
-    useEffect(() => {
-       const handleResize = () => { if(mapInstance.current) mapInstance.current.invalidateSize(); };
-       window.addEventListener('resize', handleResize);
-       return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     return (
       <div className="relative w-full h-full bg-gray-100 flex flex-col items-center">
@@ -711,7 +721,7 @@ export default function App() {
         let result;
         try { result = JSON.parse(textData); } catch (err) { throw new Error("เซิร์ฟเวอร์ไม่ได้ตอบกลับเป็น JSON (กรุณาเช็คการตั้งค่าสิทธิ์ Deploy ให้เป็น Anyone)"); }
         if (result.status === 'success') {
-          handleLoginSuccess({ id: Date.now().toString(), username: result.user.username, email: result.user.email, role: result.user.role, favorites: [] });
+          handleLoginSuccess({ id: Date.now().toString(), username: result.user.username, email: result.user.email, role: result.user.role, favorites: result.user.favorites || [] });
         } else { alert(result.message || "บัญชีผู้ใช้นี้ยังไม่ได้ลงทะเบียน"); }
       } catch (error) { console.error("Login Error:", error); alert(`เกิดข้อผิดพลาดในการเชื่อมต่อ:\n${error.message}`); }
       setIsLoading(false);
