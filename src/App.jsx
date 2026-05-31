@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound } from 'lucide-react';
 
 // --- 1. ตั้งค่า Google Apps Script URL ที่นี่ ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwtw6UJOFubv4ZYXdjvPwX7HdPUN3Aczve02KJBHaQxQV_3MTYvx6ii6_Uj2arRDwkX/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyw4axoLC6fzXPQ5yY5pY_UPp60svmfnuTGzXKTv-rfqBLqlEDE7qomr7hIeaC7YJ-1/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
