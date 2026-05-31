@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound } from 'lucide-react';
 
-// --- 1. ตั้งค่า Google Apps Script URL ที่นี่ ---
+// --- 1. ตั้งค่า Google Apps Script URL ---
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyw4axoLC6fzXPQ5yY5pY_UPp60svmfnuTGzXKTv-rfqBLqlEDE7qomr7hIeaC7YJ-1/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
@@ -29,12 +29,6 @@ const generatePropertyId = (existingProperties) => {
   return newId;
 };
 
-// --- MOCK DATA (Fallback) ---
-const initialProperties = [
-  { id: 1, propertyId: 'SM-1001', type: 'rent', propType: 'บ้านเดี่ยว', price: 15000, title: 'บ้านเดี่ยว 2 ชั้น ซอยพหลโยธิน 54/1', lat: 13.921, lng: 100.641, images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'], desc: 'บ้านสวยพร้อมอยู่ 3 ห้องนอน 2 ห้องน้ำ' },
-  { id: 2, propertyId: 'SM-1002', type: 'sale', propType: 'ทาวน์โฮม', price: 2500000, title: 'ทาวน์โฮม โครงการใหม่ สายไหม 78', lat: 13.915, lng: 100.662, images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80'], desc: 'ทาวน์โฮมสไตล์โมเดิร์น 2 ชั้น ทำเลดี ติดถนนใหญ่' },
-];
-
 const PROPERTY_TYPES = ['บ้านเดี่ยว', 'ทาวน์โฮม', 'ทาวน์เฮ้าส์', 'คอนโด', 'อพาร์ทเม้นท์'];
 const TRANSACTION_TYPES = [{ id: 'sale', label: 'ขาย' }, { id: 'rent', label: 'ให้เช่า' }];
 
@@ -45,7 +39,9 @@ export default function App() {
   const [previousView, setPreviousView] = useState('map'); 
   const [selectedProperty, setSelectedProperty] = useState(null); 
   
-  const [properties, setProperties] = useState(initialProperties);
+  // States สำหรับดึงข้อมูลจาก Server
+  const [properties, setProperties] = useState([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   
   // Search & Filter States
@@ -53,8 +49,42 @@ export default function App() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState({ types: [], transactionTypes: [], minPrice: '', maxPrice: '' });
 
-  // --- SET TITLE ---
-  useEffect(() => { document.title = "บ้านสายไหม - ขายบ้านสายไหม เช่าบ้านสายไหม คอนโดสายไหม"; }, []);
+  // --- SET TITLE & FETCH DATA ---
+  useEffect(() => { 
+    document.title = "บ้านสายไหม - ขายบ้านสายไหม เช่าบ้านสายไหม คอนโดสายไหม"; 
+    
+    // ดึงข้อมูลทรัพย์จาก Google Sheets
+    const fetchProperties = async () => {
+      try {
+        const response = await fetch(`${GAS_URL}?action=getProperties`);
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.data) {
+          // จัดฟอร์แมตข้อมูลให้เข้ากับโครงสร้างแอป
+          const formattedData = result.data.map(p => ({
+            id: p.propertyId, // ใช้ propertyId เป็น id หลักในฝั่งแอป
+            propertyId: p.propertyId,
+            type: p.type, // 'rent' หรือ 'sale'
+            propType: p.propType,
+            price: Number(p.price) || 0,
+            title: p.title,
+            lat: Number(p.lat) || 13.920,
+            lng: Number(p.lng) || 100.650,
+            desc: p.desc,
+            images: p.images ? p.images.split(',') : []
+          }));
+          // เรียงจากใหม่สุด (ล่าสุด) ไปเก่า
+          setProperties(formattedData.reverse());
+        }
+      } catch (error) {
+        console.error("Failed to fetch properties:", error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
 
   // --- LOAD LEAFLET ---
   useEffect(() => {
@@ -186,7 +216,8 @@ export default function App() {
     const markersLayer = useRef(null);
 
     useEffect(() => {
-      if (!leafletLoaded || !mapRef.current || !window.L) return;
+      if (!leafletLoaded || !mapRef.current || !window.L || isLoadingData) return;
+      
       if (!mapInstance.current) {
         mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView([13.920, 100.650], 13);
         window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(mapInstance.current);
@@ -210,24 +241,31 @@ export default function App() {
             <span style="color: ${prop.type === 'rent' ? '#60a5fa' : '#f87171'}; font-weight: bold;">ราคา: ${prop.price.toLocaleString()} ฿</span>
             <br/><br/>
             <img src="${displayImg}" style="width:100%; border-radius:8px; aspect-ratio: 16/9; object-fit: cover; margin-bottom: 12px;" />
-            <button id="map-btn-${prop.id}" style="width: 100%; background-color: #2563eb; color: white; border: none; padding: 8px 0; border-radius: 6px; font-weight: bold; cursor: pointer;">แสดงข้อมูล</button>
+            <button id="map-btn-${prop.propertyId}" style="width: 100%; background-color: #2563eb; color: white; border: none; padding: 8px 0; border-radius: 6px; font-weight: bold; cursor: pointer;">แสดงข้อมูล</button>
           </div>
         `;
         const marker = window.L.marker([prop.lat, prop.lng], { icon }).addTo(markersLayer.current)
           .bindPopup(popupContent, { className: 'dark-popup' });
         marker.on('popupopen', () => {
-          const btn = document.getElementById(`map-btn-${prop.id}`);
+          const btn = document.getElementById(`map-btn-${prop.propertyId}`);
           if (btn) btn.onclick = () => openDetail(prop, 'map');
         });
       });
-    }, [leafletLoaded, filteredProperties]);
+    }, [leafletLoaded, filteredProperties, isLoadingData]);
 
     return (
       <div className="relative w-full h-full bg-gray-100 flex flex-col">
         <div className="absolute top-0 left-0 right-0 z-[1000] pointer-events-none">
           <div className="pointer-events-auto"><SearchBar /></div>
         </div>
-        {!leafletLoaded && <div className="flex items-center justify-center h-full text-gray-600">กำลังโหลดแผนที่...</div>}
+        {isLoadingData ? (
+          <div className="flex flex-col items-center justify-center h-full bg-gray-900/5 backdrop-blur-sm z-50">
+             <Loader2 size={40} className="animate-spin text-blue-600 mb-3" />
+             <p className="text-gray-600 font-bold">กำลังโหลดแผนที่และข้อมูล...</p>
+          </div>
+        ) : !leafletLoaded && (
+          <div className="flex items-center justify-center h-full text-gray-600">กำลังโหลดเอนจิ้นแผนที่...</div>
+        )}
         <div ref={mapRef} className="flex-1 w-full z-0" />
       </div>
     );
@@ -238,7 +276,12 @@ export default function App() {
     <div className="flex flex-col h-full bg-gray-900">
       {!hideSearch && <SearchBar />}
       <div className="px-4 pb-6 space-y-4 overflow-y-auto flex-1">
-        {propertiesToShow.length === 0 ? (
+        {isLoadingData ? (
+           <div className="flex flex-col items-center justify-center py-20">
+             <Loader2 size={40} className="animate-spin text-blue-500 mb-3" />
+             <p className="text-gray-400 font-bold">กำลังโหลดข้อมูลทรัพย์...</p>
+           </div>
+        ) : propertiesToShow.length === 0 ? (
           <div className="text-center text-gray-500 py-10 flex flex-col items-center"><Search size={48} className="text-gray-700 mb-3" />{emptyMessage}</div>
         ) : (
           propertiesToShow.map(prop => {
@@ -246,7 +289,7 @@ export default function App() {
             const transType = prop.type === 'rent' ? 'เช่า' : 'ขาย';
             const displayImg = prop.images && prop.images.length > 0 ? prop.images[0] : 'https://via.placeholder.com/400?text=No+Image';
             return (
-              <div key={prop.id} onClick={() => openDetail(prop, viewName)} className="bg-gray-800 rounded-2xl shadow-md overflow-hidden border border-gray-700 cursor-pointer active:scale-[0.98]">
+              <div key={prop.propertyId} onClick={() => openDetail(prop, viewName)} className="bg-gray-800 rounded-2xl shadow-md overflow-hidden border border-gray-700 cursor-pointer active:scale-[0.98]">
                 <div className="relative h-48">
                   <img src={displayImg} alt={prop.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent"></div>
@@ -285,7 +328,7 @@ export default function App() {
     const transType = prop.type === 'rent' ? 'เช่า' : 'ขาย';
 
     const handleLineShare = () => {
-      const propertyUrl = `https://baansaimai.com/property/${prop.id}`;
+      const propertyUrl = `https://baansaimai.com/property/${prop.propertyId}`;
       const message = `สวัสดีครับ/ค่ะ สนใจสอบถามข้อมูลเพิ่มเติม รหัสทรัพย์: ${prop.propertyId}\nหัวข้อ: ${prop.title}\nราคา: ${prop.price.toLocaleString()} บาท\nลิงก์: ${propertyUrl}`;
       const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
       window.open(lineUrl, '_blank');
@@ -414,15 +457,27 @@ export default function App() {
         if (GAS_URL) {
           const base64Images = await Promise.all(imageFiles.map(file => convertToBase64(file)));
           const payload = { action: 'addProperty', property: { ...formData, propertyId: newPropId }, images: base64Images };
-          const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-          const result = await response.json();
+          
+          const response = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify(payload)
+          });
+          
+          const textData = await response.text();
+          let result;
+          try {
+            result = JSON.parse(textData);
+          } catch (err) {
+            throw new Error("เซิร์ฟเวอร์ไม่ได้ตอบกลับเป็น JSON (กรุณาเช็คการตั้งค่าสิทธิ์ Deploy ให้เป็น Anyone)");
+          }
+
           if (result.status === 'success') { finalImages = result.urls; } else { throw new Error(result.message); }
         } else {
           finalImages = imagePreviews.length > 0 ? imagePreviews : ['https://via.placeholder.com/800?text=No+Image'];
         }
 
         const newProp = {
-          ...formData, id: Date.now(), propertyId: newPropId, price: Number(formData.price), images: finalImages
+          ...formData, id: newPropId, propertyId: newPropId, price: Number(formData.price), images: finalImages
         };
 
         setProperties([newProp, ...properties]);
@@ -558,7 +613,7 @@ export default function App() {
     );
   };
 
-  // 5. Login View (เชื่อมระบบเช็คบัญชีผู้ใช้)
+  // 5. Login View
   const LoginView = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -570,7 +625,6 @@ export default function App() {
       setIsLoading(true);
       setLoginMethod('normal');
       
-      // ข้อยกเว้นสำหรับ Admin ให้เข้าได้เลย
       if ((username.toLowerCase() === 'admin_bann@sajikacash.in.th' && password === '058767502') || (username === 'admin' && password === 'admin')) {
         handleLoginSuccess({ id: 'a1', username: 'ผู้ดูแลระบบ', role: 'admin', favorites: [] });
         setIsLoading(false);
@@ -587,9 +641,16 @@ export default function App() {
         const response = await fetch(GAS_URL, {
           method: 'POST',
           body: JSON.stringify({ action: 'login', username, password }),
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
-        const result = await response.json();
+        
+        const textData = await response.text();
+        let result;
+        
+        try {
+          result = JSON.parse(textData);
+        } catch (err) {
+           throw new Error("เซิร์ฟเวอร์ไม่ได้ตอบกลับเป็น JSON (กรุณาเช็คการตั้งค่าสิทธิ์ Deploy ให้เป็น Anyone)");
+        }
         
         if (result.status === 'success') {
           handleLoginSuccess({ id: Date.now().toString(), username: result.user.username, email: result.user.email, role: result.user.role, favorites: [] });
@@ -597,7 +658,8 @@ export default function App() {
           alert(result.message || "บัญชีผู้ใช้นี้ยังไม่ได้ลงทะเบียน");
         }
       } catch (error) {
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์");
+        console.error("Login Error:", error);
+        alert(`เกิดข้อผิดพลาดในการเชื่อมต่อ:\n${error.message}`);
       }
       setIsLoading(false);
     };
@@ -693,7 +755,7 @@ export default function App() {
     );
   };
 
-  // 7. Register View (เชื่อมระบบบันทึกลง Google Sheets)
+  // 7. Register View
   const RegisterView = () => {
     const [formData, setFormData] = useState({ username: '', password: '', email: '', phone: '' });
     const [isLoading, setIsLoading] = useState(false);
@@ -712,9 +774,16 @@ export default function App() {
         const response = await fetch(GAS_URL, {
           method: 'POST',
           body: JSON.stringify({ action: 'register', user: formData }),
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
-        const result = await response.json();
+        
+        const textData = await response.text();
+        let result;
+        
+        try {
+          result = JSON.parse(textData);
+        } catch (err) {
+           throw new Error("เซิร์ฟเวอร์ไม่ได้ตอบกลับเป็น JSON (กรุณาเช็คการตั้งค่าสิทธิ์ Deploy ให้เป็น Anyone)");
+        }
         
         if (result.status === 'success') {
           alert("ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบ");
@@ -723,7 +792,8 @@ export default function App() {
           alert(result.message || "เกิดข้อผิดพลาดในการลงทะเบียน");
         }
       } catch (error) {
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์");
+        console.error("Register Error:", error);
+        alert(`เกิดข้อผิดพลาดในการเชื่อมต่อ:\n${error.message}`);
       }
       setIsLoading(false);
     };
