@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight, ShieldCheck, FileText } from 'lucide-react';
 
 // --- 1. ตั้งค่า Google Apps Script URL ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwqLNq0dQ8KPutVQuftDJnW-hLo_nHDmi4EfrIgG-z7pRgfXR98MlyNqvh4DyT-LBj5/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx-uR5hVHYmotP6mBgJtK7thVuLxZE00KvPUdvb83kNCeNipLXbErckHMlKi6jc2g/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
@@ -70,6 +70,42 @@ export default function App() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState({ types: [], transactionTypes: [], minPrice: '', maxPrice: '' });
 
+  // --- เช็ค LINE Login Callback เมื่อเข้าแอปครั้งแรก ---
+  useEffect(() => {
+    const processLineLoginCallback = async (code) => {
+      setIsLoadingData(true);
+      try {
+        const redirectUri = window.location.origin + window.location.pathname;
+        const response = await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'lineLogin', code, redirectUri }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        
+        const textData = await response.text();
+        const result = JSON.parse(textData);
+        
+        if (result.status === 'success') {
+          handleLoginSuccess({ id: Date.now().toString(), username: result.user.username, email: result.user.email, role: result.user.role, favorites: [] });
+        } else {
+          alert('ล็อกอินผ่าน LINE ล้มเหลว: ' + result.message);
+        }
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE:\n' + err.message);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    if (code) {
+      // ลบ ?code ออกจาก URL ให้สะอาดตา
+      window.history.replaceState({}, document.title, window.location.pathname);
+      processLineLoginCallback(code);
+    }
+  }, []);
+
   // --- SET TITLE & FETCH DATA ---
   useEffect(() => { 
     document.title = "บ้านสายไหม - ขายบ้านสายไหม เช่าบ้านสายไหม คอนโดสายไหม"; 
@@ -88,7 +124,9 @@ export default function App() {
           }));
           setProperties(formattedData.reverse());
         } else { setProperties(initialProperties); }
-      } catch (error) { setProperties(initialProperties); } finally { setIsLoadingData(false); }
+      } catch (error) { setProperties(initialProperties); } finally { 
+        if (!window.location.search.includes('code=')) setIsLoadingData(false); 
+      }
     };
     fetchProperties();
   }, []);
@@ -647,7 +685,7 @@ export default function App() {
     );
   };
 
-  // 5. Login View (Responsive)
+  // 5. Login View (Responsive & LINE Action)
   const LoginView = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -677,6 +715,20 @@ export default function App() {
         } else { alert(result.message || "บัญชีผู้ใช้นี้ยังไม่ได้ลงทะเบียน"); }
       } catch (error) { console.error("Login Error:", error); alert(`เกิดข้อผิดพลาดในการเชื่อมต่อ:\n${error.message}`); }
       setIsLoading(false);
+    };
+
+    // --- เชื่อมต่อ LINE API จริง ---
+    const loginWithLINE = () => {
+      setIsLoading(true);
+      setLoginMethod('line');
+      
+      const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+      const LINE_CHANNEL_ID = "2010245466"; 
+      
+      if(!LINE_CHANNEL_ID){ alert("กรุณาใส่ค่า LINE_CHANNEL_ID ในโค้ด React ก่อนครับ"); setIsLoading(false); return; }
+
+      const lineLoginUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${LINE_CHANNEL_ID}&redirect_uri=${redirectUri}&state=baansaimai&scope=profile%20openid%20email`;
+      window.location.href = lineLoginUrl; 
     };
 
     const mockSocialLogin = (provider) => {
@@ -714,7 +766,7 @@ export default function App() {
           </div>
 
           <div className="mt-8 space-y-3">
-            <button disabled={isLoading} onClick={() => mockSocialLogin('LINE')} className="w-full bg-[#00B900] text-white rounded-xl py-3.5 font-bold shadow-md flex justify-center items-center hover:bg-[#00A000] disabled:opacity-70 transition-all active:scale-[0.98]">
+            <button disabled={isLoading} onClick={loginWithLINE} className="w-full bg-[#00B900] text-white rounded-xl py-3.5 font-bold shadow-md flex justify-center items-center hover:bg-[#00A000] disabled:opacity-70 transition-all active:scale-[0.98]">
               {isLoading && loginMethod === 'line' ? <Loader2 size={20} className="animate-spin mr-2" /> : <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />}
               {isLoading && loginMethod === 'line' ? 'กำลังเชื่อมต่อ LINE...' : 'เข้าสู่ระบบด้วย LINE'}
             </button>
@@ -968,7 +1020,7 @@ export default function App() {
                 <MessageCircle size={16} /> ติดต่อลงโพสต์
               </a>
               {!currentUser && currentView !== 'login' && (
-                <button onClick={() => setCurrentView('login')} className="text-[10px] sm:text-sm font-bold text-blue-400 bg-blue-900/30 border border-blue-800 px-3 sm:px-4 py-2 rounded-full hover:bg-blue-900/50 whitespace-nowrap transition-colors">
+                <button onClick={() => setCurrentView('login')} className="text-[10px] sm:text-xs font-bold text-blue-400 bg-blue-900/30 border border-blue-800 px-3 sm:px-4 py-2 rounded-full hover:bg-blue-900/50 whitespace-nowrap transition-colors">
                   เข้าสู่ระบบ
                 </button>
               )}
