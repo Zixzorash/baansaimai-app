@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight } from 'lucide-react';
+import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight, ShieldCheck, FileText } from 'lucide-react';
 
 // --- 1. ตั้งค่า Google Apps Script URL ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxIRSZw360uv5w2mEd-jqPMAFfvKV54QYEX2EF2FsSLFf4x6UP3hiWFf84m_N-WIrE1/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw1kG5mtoBuMInf02UcTOPbkPiikUGOJPTU3RhPGhD2JnCdJC1AdeUYys0lQxYhsDyH/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
@@ -716,7 +716,7 @@ export default function App() {
       if (!GAS_URL) { alert("กรุณาตั้งค่า GAS_URL ภายในโค้ดเพื่อใช้งานระบบสมาชิกจริง"); setIsLoading(false); return; }
 
       try {
-        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'login', username, password }) });
+        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'login', username, password }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
         const textData = await response.text();
         let result;
         try { result = JSON.parse(textData); } catch (err) { throw new Error("เซิร์ฟเวอร์ไม่ได้ตอบกลับเป็น JSON (กรุณาเช็คการตั้งค่าสิทธิ์ Deploy ให้เป็น Anyone)"); }
@@ -843,7 +843,7 @@ export default function App() {
       if (!GAS_URL) { alert("กรุณาตั้งค่า GAS_URL ภายในโค้ดเพื่อใช้งานระบบสมัครสมาชิกจริง"); setIsLoading(false); return; }
 
       try {
-        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'register', user: formData }) });
+        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'register', user: formData }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
         const textData = await response.text();
         let result;
         try { result = JSON.parse(textData); } catch (err) { throw new Error("เซิร์ฟเวอร์ไม่ได้ตอบกลับเป็น JSON (กรุณาเช็คการตั้งค่าสิทธิ์ Deploy ให้เป็น Anyone)"); }
