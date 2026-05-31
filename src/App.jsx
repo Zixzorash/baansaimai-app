@@ -86,7 +86,7 @@ export default function App() {
       case 'register': path = '/register'; break;
       case 'forgot-password': path = '/forgotpw'; break;
       case 'privacy': path = '/privacy'; break;
-      case 'terms': path = '/teams'; break; // กำหนดตามคำขอเป็น /teams
+      case 'terms': path = '/terms'; break; // กำหนดตามคำขอเป็น /terms
       case 'search': path = '/search'; break;
       case 'admin': path = '/admin'; break;
       case 'detail': path = prop ? `/property/${prop.propertyId}` : '/'; break;
