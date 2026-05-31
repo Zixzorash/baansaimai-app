@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound } from 'lucide-react';
 
 // --- 1. ตั้งค่า Google Apps Script URL ที่นี่ ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwtw6UJOFubv4ZYXdjvPwX7HdPUN3Aczve02KJBHaQxQV_3MTYvx6ii6_Uj2arRDwkX/exec"; // นำ URL ของคุณมาใส่ในเครื่องหมายคำพูด (เช่น "https://script.google.com/macros/s/.../exec")
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwtw6UJOFubv4ZYXdjvPwX7HdPUN3Aczve02KJBHaQxQV_3MTYvx6ii6_Uj2arRDwkX/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
@@ -29,7 +29,7 @@ const generatePropertyId = (existingProperties) => {
   return newId;
 };
 
-// --- MOCK DATA ---
+// --- MOCK DATA (Fallback) ---
 const initialProperties = [
   { id: 1, propertyId: 'SM-1001', type: 'rent', propType: 'บ้านเดี่ยว', price: 15000, title: 'บ้านเดี่ยว 2 ชั้น ซอยพหลโยธิน 54/1', lat: 13.921, lng: 100.641, images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'], desc: 'บ้านสวยพร้อมอยู่ 3 ห้องนอน 2 ห้องน้ำ' },
   { id: 2, propertyId: 'SM-1002', type: 'sale', propType: 'ทาวน์โฮม', price: 2500000, title: 'ทาวน์โฮม โครงการใหม่ สายไหม 78', lat: 13.915, lng: 100.662, images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80'], desc: 'ทาวน์โฮมสไตล์โมเดิร์น 2 ชั้น ทำเลดี ติดถนนใหญ่' },
@@ -76,7 +76,7 @@ export default function App() {
     setCurrentUser({ ...currentUser, favorites: newFavs });
   };
 
-  const handleLogin = (user) => { setCurrentUser(user); setCurrentView('map'); };
+  const handleLoginSuccess = (user) => { setCurrentUser(user); setCurrentView('map'); };
   const handleLogout = () => { setCurrentUser(null); setCurrentView('map'); };
   const openDetail = (prop, fromView) => { setSelectedProperty(prop); setPreviousView(fromView); setCurrentView('detail'); };
   const resetFilters = () => { setFilters({ types: [], transactionTypes: [], minPrice: '', maxPrice: '' }); };
@@ -91,7 +91,6 @@ export default function App() {
     const minP = filters.minPrice === '' ? 0 : Number(filters.minPrice);
     const maxP = filters.maxPrice === '' ? Infinity : Number(filters.maxPrice);
     const matchPrice = p.price >= minP && p.price <= maxP;
-    
     return matchSearch && matchType && matchTransaction && matchPrice;
   });
 
@@ -342,7 +341,7 @@ export default function App() {
     );
   };
 
-  // 4. Admin View
+  // 4. Admin View 
   const AdminView = () => {
     const defaultLat = 13.920;
     const defaultLng = 100.650;
@@ -396,11 +395,7 @@ export default function App() {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = () => resolve({
-          name: file.name,
-          mimeType: file.type,
-          base64: reader.result.split(',')[1]
-        });
+        reader.onload = () => resolve({ name: file.name, mimeType: file.type, base64: reader.result.split(',')[1] });
         reader.onerror = error => reject(error);
       });
     };
@@ -408,7 +403,9 @@ export default function App() {
     const handleSubmit = async (e) => {
       e.preventDefault();
       
-      if (!GAS_URL) { alert('ยังไม่ได้ใส่ Google Sheets URL ในโค้ด ระบบจะบันทึกจำลองลงในเครื่องเท่านั้น'); }
+      if (!GAS_URL) { 
+        alert('ยังไม่ได้ใส่ Google Sheets URL ในโค้ด (บรรทัดที่ 4) ระบบจะบันทึกจำลองลงในเครื่องเท่านั้น'); 
+      }
 
       setIsUploading(true);
 
@@ -561,32 +558,55 @@ export default function App() {
     );
   };
 
-  // 5. Login View
+  // 5. Login View (เชื่อมระบบเช็คบัญชีผู้ใช้)
   const LoginView = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [loginMethod, setLoginMethod] = useState('');
 
-    const onSubmit = (e) => {
+    const onSubmit = async (e) => {
       e.preventDefault();
       setIsLoading(true);
       setLoginMethod('normal');
-      setTimeout(() => {
-        if ((username.toLowerCase() === 'admin_bann@sajikacash.in.th' && password === '058767502') || (username === 'admin' && password === 'admin')) {
-          handleLogin({ id: 'a1', username: 'ผู้ดูแลระบบ', role: 'admin', favorites: [] });
-        } else {
-          handleLogin({ id: Date.now().toString(), username: username || 'User', role: 'user', favorites: [] });
-        }
+      
+      // ข้อยกเว้นสำหรับ Admin ให้เข้าได้เลย
+      if ((username.toLowerCase() === 'admin_bann@sajikacash.in.th' && password === '058767502') || (username === 'admin' && password === 'admin')) {
+        handleLoginSuccess({ id: 'a1', username: 'ผู้ดูแลระบบ', role: 'admin', favorites: [] });
         setIsLoading(false);
-      }, 800);
+        return;
+      }
+
+      if (!GAS_URL) {
+        alert("กรุณาตั้งค่า GAS_URL ภายในโค้ดเพื่อใช้งานระบบสมาชิกจริง");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'login', username, password }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          handleLoginSuccess({ id: Date.now().toString(), username: result.user.username, email: result.user.email, role: result.user.role, favorites: [] });
+        } else {
+          alert(result.message || "บัญชีผู้ใช้นี้ยังไม่ได้ลงทะเบียน");
+        }
+      } catch (error) {
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์");
+      }
+      setIsLoading(false);
     };
 
     const mockSocialLogin = (provider) => {
       setIsLoading(true);
       setLoginMethod(provider.toLowerCase());
       setTimeout(() => {
-        handleLogin({ id: Date.now().toString(), username: `ผู้ใช้จาก ${provider}`, role: 'user', favorites: [] });
+        handleLoginSuccess({ id: Date.now().toString(), username: `ผู้ใช้จาก ${provider}`, role: 'user', favorites: [] });
         setIsLoading(false);
       }, 1500);
     };
@@ -673,23 +693,60 @@ export default function App() {
     );
   };
 
-  // 7. Register View
-  const RegisterView = () => (
-    <div className="p-6 flex flex-col justify-center h-full bg-gray-900 pb-6 overflow-y-auto w-full">
-      <div className="mb-6">
-        <button onClick={() => setCurrentView('login')} className="text-gray-400 hover:text-white mb-4 flex items-center transition-colors"><ChevronLeft size={20} className="mr-1" /> กลับ</button>
-        <h1 className="text-2xl font-bold text-white">ลงทะเบียนสมาชิก</h1>
-        <p className="text-gray-400 text-sm mt-1">กรอกข้อมูลเพื่อสร้างบัญชีผู้ใช้ใหม่</p>
+  // 7. Register View (เชื่อมระบบบันทึกลง Google Sheets)
+  const RegisterView = () => {
+    const [formData, setFormData] = useState({ username: '', password: '', email: '', phone: '' });
+    const [isLoading, setIsLoading] = useState(false);
+
+    const onSubmit = async (e) => {
+      e.preventDefault();
+      setIsLoading(true);
+
+      if (!GAS_URL) {
+        alert("กรุณาตั้งค่า GAS_URL ภายในโค้ดเพื่อใช้งานระบบสมัครสมาชิกจริง");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'register', user: formData }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          alert("ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบ");
+          setCurrentView('login');
+        } else {
+          alert(result.message || "เกิดข้อผิดพลาดในการลงทะเบียน");
+        }
+      } catch (error) {
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์");
+      }
+      setIsLoading(false);
+    };
+
+    return (
+      <div className="p-6 flex flex-col justify-center h-full bg-gray-900 pb-6 overflow-y-auto w-full">
+        <div className="mb-6">
+          <button onClick={() => setCurrentView('login')} className="text-gray-400 hover:text-white mb-4 flex items-center transition-colors"><ChevronLeft size={20} className="mr-1" /> กลับ</button>
+          <h1 className="text-2xl font-bold text-white">ลงทะเบียนสมาชิก</h1>
+          <p className="text-gray-400 text-sm mt-1">กรอกข้อมูลเพื่อสร้างบัญชีผู้ใช้ใหม่</p>
+        </div>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="relative"><User className="absolute top-3 left-3 text-gray-500" size={20} /><input type="text" required placeholder="ชื่อผู้ใช้งาน" disabled={isLoading} className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none disabled:opacity-50" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})}/></div>
+          <div className="relative"><Lock className="absolute top-3 left-3 text-gray-500" size={20} /><input type="password" required placeholder="รหัสผ่าน" disabled={isLoading} className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none disabled:opacity-50" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}/></div>
+          <div className="relative"><Mail className="absolute top-3 left-3 text-gray-500" size={20} /><input type="email" required placeholder="อีเมล" disabled={isLoading} className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none disabled:opacity-50" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}/></div>
+          <div className="relative"><Phone className="absolute top-3 left-3 text-gray-500" size={20} /><input type="tel" required placeholder="เบอร์โทรศัพท์" disabled={isLoading} className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none disabled:opacity-50" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}/></div>
+          <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white rounded-xl py-3 font-bold shadow-lg hover:bg-blue-700 mt-2 flex justify-center items-center disabled:bg-blue-800">
+            {isLoading ? <Loader2 size={20} className="animate-spin mr-2" /> : null} สร้างบัญชี
+          </button>
+        </form>
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); setCurrentView('login'); alert("ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบ"); }} className="space-y-4">
-        <div className="relative"><User className="absolute top-3 left-3 text-gray-500" size={20} /><input type="text" required placeholder="ชื่อผู้ใช้งาน" className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none"/></div>
-        <div className="relative"><Lock className="absolute top-3 left-3 text-gray-500" size={20} /><input type="password" required placeholder="รหัสผ่าน" className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none"/></div>
-        <div className="relative"><Mail className="absolute top-3 left-3 text-gray-500" size={20} /><input type="email" required placeholder="อีเมล" className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none"/></div>
-        <div className="relative"><Phone className="absolute top-3 left-3 text-gray-500" size={20} /><input type="tel" required placeholder="เบอร์โทรศัพท์" className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl py-3 pl-10 pr-4 outline-none"/></div>
-        <button type="submit" className="w-full bg-blue-600 text-white rounded-xl py-3 font-bold shadow-lg hover:bg-blue-700 mt-2">สร้างบัญชี</button>
-      </form>
-    </div>
-  );
+    );
+  };
 
   // 8. Profile View
   const ProfileView = () => (
