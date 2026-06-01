@@ -688,15 +688,20 @@ function MainApp() {
             />
           </div>
 
-          <button disabled={isLoading} onClick={loginWithLINE} className="w-full bg-[#00B900] text-white rounded-xl py-3 font-bold flex justify-center items-center hover:bg-[#00A000]">
-            <img src="src/assets/line-icon.svg" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />
-            {isLoading && loginMethod === 'line' ? 'กำลังเชื่อมต่อ LINE...' : 'เข้าสู่ระบบด้วย LINE'}
-          </button>
-        </div>
-        <div className="mt-8 text-center text-sm text-gray-400">ยังไม่มีบัญชีใช่ไหม? <span onClick={() => navigate('register')} className="text-blue-500 font-bold cursor-pointer hover:underline">ลงทะเบียนเลย</span></div>
-      </div>
-    );
-  };
+          <button 
+            disabled={isLoading} 
+            onClick={loginWithLINE} 
+            className="w-full bg-[#06C755] text-white rounded-xl py-3 font-bold flex justify-center items-center hover:bg-[#05b34c] transition-colors shadow-md active:scale-95"
+          >
+            {/* แสดงไอคอน LINE SVG บนปุ่ม */}
+            <LineIcon className="w-6 h-6 mr-2" />
+            {isLoading && loginMethod === 'line' ? 'กำลังเชื่อมต่อ LINE...' : 'เข้าสู่ระบบด้วย LINE'}
+          </button>
+        </div>
+        <div className="mt-8 text-center text-sm text-gray-400">ยังไม่มีบัญชีใช่ไหม? <span onClick={() => navigate('register')} className="text-blue-500 font-bold cursor-pointer hover:underline">ลงทะเบียนเลย</span></div>
+      </div>
+    );
+  };
 
   const ForgotPasswordView = () => (
     <div className="p-6 flex flex-col justify-center h-full bg-gray-900 w-full animate-in fade-in duration-300">
