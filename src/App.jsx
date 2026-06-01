@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight, ShieldCheck, FileText } from 'lucide-react';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
-// ==================================================================
-// ⚠️ คำแนะนำก่อนนำไปรันในเครื่องของคุณ (Termux):
-// 1. ลบเครื่องหมาย // ด้านหน้าคำว่า import ในบรรทัดถัดไปนี้ออก เพื่อใช้ของจริง
-// import { GoogleLogin } from '@react-oauth/google';
-// 
-// 2. ลบส่วนของ Mock Component (ปุ่มจำลอง) ด้านล่างนี้ออกทั้งหมด
-// ==================================================================
-// ==================================================================
-
-// --- 1. ตั้งค่า Google Apps Script URL ---
+// --- 1. ตั้งค่า Google Apps Script URL และ Client ID ---
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyJ2CdhbCwBboucgG1CRSJxS6pWcTdG1XKhgo0zzViQWz-6IgubbpnAEYhBg7OgxyTT/exec";
+const CLIENT_ID = "185026694768-s4ale64c88rvslq2qahmndev45b7csnr.apps.googleusercontent.com";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
@@ -46,7 +39,7 @@ const getWorkingImageUrl = (url) => {
   return url;
 };
 
-// --- MOCK DATA (สำหรับกรณีโหลดข้อมูลไม่สำเร็จ) ---
+// --- MOCK DATA ---
 const initialProperties = [
   { id: 1, propertyId: 'SM-1001', type: 'rent', propType: 'บ้านเดี่ยว', price: 15000, title: 'บ้านเดี่ยว 2 ชั้น ซอยพหลโยธิน 54/1', lat: 13.921, lng: 100.641, images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'], desc: 'บ้านสวยพร้อมอยู่ 3 ห้องนอน 2 ห้องน้ำ', date: '2026-06-01' },
   { id: 2, propertyId: 'SM-1002', type: 'sale', propType: 'ทาวน์โฮม', price: 2500000, title: 'ทาวน์โฮม โครงการใหม่ สายไหม 78', lat: 13.915, lng: 100.662, images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80'], desc: 'ทาวน์โฮมสไตล์โมเดิร์น 2 ชั้น ทำเลดี ติดถนนใหญ่', date: '2026-06-01' },
@@ -55,7 +48,7 @@ const initialProperties = [
 const PROPERTY_TYPES = ['บ้านเดี่ยว', 'ทาวน์โฮม', 'ทาวน์เฮ้าส์', 'คอนโด', 'อพาร์ทเม้นท์'];
 const TRANSACTION_TYPES = [{ id: 'sale', label: 'ขาย' }, { id: 'rent', label: 'ให้เช่า' }];
 
-export default function App() {
+function MainApp() {
   // --- STATES ---
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -671,7 +664,7 @@ export default function App() {
         <div className="mt-6 flex items-center justify-between max-w-sm mx-auto w-full"><hr className="w-full border-gray-700" /><span className="px-3 text-gray-500 text-sm whitespace-nowrap">หรือ</span><hr className="w-full border-gray-700" /></div>
         
         <div className="mt-6 space-y-3 max-w-sm mx-auto w-full">
-          {/* ปุ่มเข้าสู่ระบบ Google Auth */}
+          {/* ปุ่มเข้าสู่ระบบ Google Auth ของจริง */}
           <div className="flex justify-center w-full">
             <GoogleLogin
               onSuccess={credentialResponse => {
@@ -852,5 +845,13 @@ export default function App() {
 
       </div>
     </div>
+  );
+}
+
+export default function AppWrapper() {
+  return (
+    <GoogleOAuthProvider clientId={CLIENT_ID}>
+      <MainApp />
+    </GoogleOAuthProvider>
   );
 }
