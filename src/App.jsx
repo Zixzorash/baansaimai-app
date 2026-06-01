@@ -376,30 +376,29 @@ function MainApp() {
             </div>
             <span className="text-gray-500 text-xs font-mono bg-gray-800 px-2 py-1 rounded border border-gray-700 mt-1">ID: {prop.propertyId}</span>
           </div>
-          
           <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">{prop.title}</h1>
           <div className={`text-3xl md:text-4xl font-extrabold my-2 ${prop.type === 'rent' ? 'text-blue-400' : 'text-red-400'}`}>
             ฿{prop.price.toLocaleString()} {prop.type === 'rent' && <span className="text-base font-normal text-gray-400">/ เดือน</span>}
           </div>
+          <div className="mt-8 grid grid-cols-3 gap-3 max-w-lg mx-auto">
+            <button className="flex flex-col items-center justify-center gap-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-white py-3 rounded-2xl font-bold shadow-sm transition-colors active:scale-95">
+            <Phone size={22} className="text-blue-400" /><span className="text-xs">โทร</span>
+            </button>
+            <button onClick={handleLineShare} className="flex flex-col items-center justify-center gap-1.5 bg-[#00B900] hover:bg-[#009900] text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-900/20 transition-colors active:scale-95">
+            <MessageCircle size={22} /><span className="text-xs">LINE</span>
+            </button>
+            <button onClick={handleDirections} className="flex flex-col items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-900/20 transition-colors active:scale-95">
+            <Navigation size={22} /><span className="text-xs">เส้นทาง</span>
+            </button>
+
           <hr className="border-gray-800 my-6" />
           <h3 className="text-lg font-bold text-white mb-3">รายละเอียดทรัพย์</h3>
           <p className="text-gray-400 leading-relaxed text-sm md:text-base whitespace-pre-wrap">{prop.desc}</p>
-
-          <div className="mt-8 grid grid-cols-3 gap-3 max-w-lg mx-auto">
-            <button className="flex flex-col items-center justify-center gap-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-white py-3 rounded-2xl font-bold shadow-sm transition-colors active:scale-95">
-              <Phone size={22} className="text-blue-400" /><span className="text-xs">โทร</span>
-            </button>
-            <button onClick={handleLineShare} className="flex flex-col items-center justify-center gap-1.5 bg-[#00B900] hover:bg-[#009900] text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-900/20 transition-colors active:scale-95">
-              <MessageCircle size={22} /><span className="text-xs">LINE</span>
-            </button>
-            <button onClick={handleDirections} className="flex flex-col items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-900/20 transition-colors active:scale-95">
-              <Navigation size={22} /><span className="text-xs">เส้นทาง</span>
-            </button>
           </div>
         </div>
       </div>
     );
-  };
+  };          
 
   const SearchView = () => (
     <div className="flex flex-col h-full bg-gray-900 w-full animate-in fade-in zoom-in-95 duration-200">
