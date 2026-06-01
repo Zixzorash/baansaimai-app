@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight, ShieldCheck, FileText } from 'lucide-react';
 
+// ==================================================================
+// ⚠️ คำแนะนำก่อนนำไปรันในเครื่องของคุณ (Termux):
+// 1. ลบเครื่องหมาย // ด้านหน้าคำว่า import ในบรรทัดถัดไปนี้ออก เพื่อใช้ของจริง
+// import { GoogleLogin } from '@react-oauth/google';
+// 
+// 2. ลบส่วนของ Mock Component (ปุ่มจำลอง) ด้านล่างนี้ออกทั้งหมด
+// ==================================================================
+const GoogleLogin = ({ onSuccess }) => (
+  <button type="button" onClick={() => onSuccess({ credential: 'mock-google-token' })} className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl py-3 font-bold flex justify-center items-center hover:bg-gray-100 transition-colors shadow-sm">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-5 h-5 mr-2" />
+    เข้าสู่ระบบด้วย Google
+  </button>
+);
+// ==================================================================
+
 // --- 1. ตั้งค่า Google Apps Script URL ---
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw1kG5mtoBuMInf02UcTOPbkPiikUGOJPTU3RhPGhD2JnCdJC1AdeUYys0lQxYhsDyH/exec";
 
@@ -37,7 +52,7 @@ const getWorkingImageUrl = (url) => {
   return url;
 };
 
-// --- MOCK DATA ---
+// --- MOCK DATA (สำหรับกรณีโหลดข้อมูลไม่สำเร็จ) ---
 const initialProperties = [
   { id: 1, propertyId: 'SM-1001', type: 'rent', propType: 'บ้านเดี่ยว', price: 15000, title: 'บ้านเดี่ยว 2 ชั้น ซอยพหลโยธิน 54/1', lat: 13.921, lng: 100.641, images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'], desc: 'บ้านสวยพร้อมอยู่ 3 ห้องนอน 2 ห้องน้ำ', date: '2026-06-01' },
   { id: 2, propertyId: 'SM-1002', type: 'sale', propType: 'ทาวน์โฮม', price: 2500000, title: 'ทาวน์โฮม โครงการใหม่ สายไหม 78', lat: 13.915, lng: 100.662, images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80'], desc: 'ทาวน์โฮมสไตล์โมเดิร์น 2 ชั้น ทำเลดี ติดถนนใหญ่', date: '2026-06-01' },
@@ -58,7 +73,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('map'); 
   const [previousView, setPreviousView] = useState('map'); 
   const [selectedProperty, setSelectedProperty] = useState(null); 
-  const [pendingPropertyId, setPendingPropertyId] = useState(null); // สำหรับเปิดหน้า detail ทันทีที่โหลดเสร็จ
+  const [pendingPropertyId, setPendingPropertyId] = useState(null); 
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState(null);
   
   const [properties, setProperties] = useState([]);
@@ -68,12 +83,11 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({ types: [], transactionTypes: [], minPrice: '', maxPrice: '' });
 
-  // --- 🌟 CUSTOM ROUTER (ระบบ URL) ---
+  // --- 🌟 CUSTOM ROUTER ---
   const navigate = (view, prop = null) => {
     setCurrentView(view);
     if (prop) setSelectedProperty(prop);
     
-    // บันทึกหน้าก่อนหน้าไว้สำหรับปุ่ม Back (ยกเว้นหน้า search/detail)
     if (view !== 'search' && view !== 'detail') setPreviousView(currentView);
 
     let path = '/';
@@ -86,14 +100,12 @@ export default function App() {
       case 'register': path = '/register'; break;
       case 'forgot-password': path = '/forgotpw'; break;
       case 'privacy': path = '/privacy'; break;
-      case 'terms': path = '/terms'; break; // กำหนดตามคำขอเป็น /terms
+      case 'terms': path = '/terms'; break; 
       case 'search': path = '/search'; break;
       case 'admin': path = '/admin'; break;
       case 'detail': path = prop ? `/property/${prop.propertyId}` : '/'; break;
       default: path = '/';
     }
-    
-    // ดัน URL เข้า History ของ Browser โดยไม่ต้องรีโหลดเว็บ
     window.history.pushState({ view, prop }, '', path);
   };
 
@@ -105,7 +117,7 @@ export default function App() {
     else if (path === '/register') setCurrentView('register');
     else if (path === '/forgotpw') setCurrentView('forgot-password');
     else if (path === '/privacy') setCurrentView('privacy');
-    else if (path === '/teams') setCurrentView('terms');
+    else if (path === '/terms') setCurrentView('terms');
     else if (path === '/search') setCurrentView('search');
     else if (path === '/admin') setCurrentView('admin');
     else if (path.startsWith('/property/')) {
@@ -115,12 +127,8 @@ export default function App() {
     } else setCurrentView('map');
   };
 
-  // ตรวจจับ URL ตอนเปิดเว็บครั้งแรก
-  useEffect(() => {
-    parsePath(window.location.pathname);
-  }, []);
+  useEffect(() => { parsePath(window.location.pathname); }, []);
 
-  // ตรวจจับตอนผู้ใช้กดปุ่ม "ย้อนกลับ" ในมือถือ/เบราว์เซอร์
   useEffect(() => {
     const handlePopState = (e) => {
       if (e.state && e.state.view) {
@@ -163,12 +171,10 @@ export default function App() {
     fetchProperties();
   }, []);
 
-  // เปิด Property ทันทีถ้าเข้ามาด้วยลิงก์ตรงๆ (/property/SM-xxxx)
   useEffect(() => {
     if (properties.length > 0 && pendingPropertyId) {
       const prop = properties.find(p => p.propertyId === pendingPropertyId);
-      if (prop) { setSelectedProperty(prop); } 
-      else { navigate('map'); }
+      if (prop) { setSelectedProperty(prop); } else { navigate('map'); }
       setPendingPropertyId(null);
     }
   }, [properties, pendingPropertyId]);
@@ -293,7 +299,7 @@ export default function App() {
     );
   };
 
-  // 2. List View & Favorites Component
+  // 2. List View & Favorites
   const PropertyList = ({ propertiesToShow, emptyMessage, hideSearch }) => (
     <div className="flex flex-col h-full bg-gray-900">
       {!hideSearch && <SearchBar />}
@@ -414,7 +420,7 @@ export default function App() {
     );
   };
 
-  // 4. Search View (หน้ากรองข้อมูลเต็มจอ /search)
+  // 4. Search View
   const SearchView = () => (
     <div className="flex flex-col h-full bg-gray-900 w-full animate-in fade-in zoom-in-95 duration-200">
       <div className="p-4 flex justify-between items-center z-10 bg-gray-900 border-b border-gray-800 shrink-0">
@@ -543,7 +549,7 @@ export default function App() {
 
     const handleSubmit = async (e) => {
       e.preventDefault();
-      if (!GAS_URL) alert('ยังไม่ได้ใส่ Google Sheets URL ในโค้ด (บรรทัดที่ 4)'); 
+      if (!GAS_URL) alert('ยังไม่ได้ใส่ Google Sheets URL ในโค้ด'); 
       setIsUploading(true);
       try {
         let finalImages = [];
@@ -667,9 +673,38 @@ export default function App() {
           <div className="flex justify-end"><button type="button" onClick={() => navigate('forgot-password')} className="text-sm text-blue-400 hover:text-blue-300">ลืมรหัสผ่าน?</button></div>
           <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white rounded-xl py-3 font-bold flex justify-center items-center">{isLoading && loginMethod === 'normal' && <Loader2 size={20} className="animate-spin mr-2" />} เข้าสู่ระบบ</button>
         </form>
+        
         <div className="mt-6 flex items-center justify-between max-w-sm mx-auto w-full"><hr className="w-full border-gray-700" /><span className="px-3 text-gray-500 text-sm whitespace-nowrap">หรือ</span><hr className="w-full border-gray-700" /></div>
+        
         <div className="mt-6 space-y-3 max-w-sm mx-auto w-full">
-          <button disabled={isLoading} onClick={loginWithLINE} className="w-full bg-[#00B900] text-white rounded-xl py-3 font-bold flex justify-center items-center hover:bg-[#00A000]"><img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />{isLoading && loginMethod === 'line' ? 'กำลังเชื่อมต่อ LINE...' : 'เข้าสู่ระบบด้วย LINE'}</button>
+          {/* ปุ่มเข้าสู่ระบบ Google Auth */}
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={credentialResponse => {
+                setIsLoading(true); setLoginMethod('google');
+                fetch(GAS_URL, {
+                  method: 'POST',
+                  body: JSON.stringify({ action: 'googleLogin', token: credentialResponse.credential }),
+                })
+                .then(res => res.json())
+                .then(data => {
+                  if (data.status === 'success') { handleLoginSuccess(data.user); } 
+                  else { alert("Login Failed: " + data.message); }
+                  setIsLoading(false);
+                })
+                .catch(err => { alert("Connection Error"); setIsLoading(false); });
+              }}
+              onError={() => alert('Google Login ล้มเหลว')}
+              size="large"
+              theme="filled_black"
+              width="100%"
+            />
+          </div>
+
+          <button disabled={isLoading} onClick={loginWithLINE} className="w-full bg-[#00B900] text-white rounded-xl py-3 font-bold flex justify-center items-center hover:bg-[#00A000]">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />
+            {isLoading && loginMethod === 'line' ? 'กำลังเชื่อมต่อ LINE...' : 'เข้าสู่ระบบด้วย LINE'}
+          </button>
         </div>
         <div className="mt-8 text-center text-sm text-gray-400">ยังไม่มีบัญชีใช่ไหม? <span onClick={() => navigate('register')} className="text-blue-500 font-bold cursor-pointer hover:underline">ลงทะเบียนเลย</span></div>
       </div>
@@ -718,7 +753,7 @@ export default function App() {
     );
   };
 
-  // 8. Profile View (อัปเดตปุ่ม Privacy & Terms)
+  // 8. Profile View 
   const ProfileView = () => (
     <div className="p-6 pb-6 h-full bg-gray-900 overflow-y-auto w-full animate-in fade-in duration-200">
       <div className="max-w-md mx-auto w-full">
@@ -744,13 +779,9 @@ export default function App() {
 
   // --- RENDER MAIN LAYOUT ---
   return (
-    // อัปเดต className ให้ทำงานแบบ Desktop/Mobile ไร้รอยต่อ
     <div className="flex flex-col h-[100dvh] w-full bg-black relative font-sans overflow-hidden">
-      
-      {/* จัดให้อยู่ตรงกลางจอหากดูในคอม (Desktop layout optimization) */}
       <div className="flex flex-col h-full w-full max-w-[1200px] mx-auto bg-gray-900 relative shadow-2xl border-x border-gray-800">
         
-        {/* Header - Fixed Height */}
         {currentView !== 'detail' && currentView !== 'login' && currentView !== 'forgot-password' && currentView !== 'register' && currentView !== 'search' && (
           <header className="bg-gray-900 pt-8 pb-4 px-4 shadow-sm z-10 flex justify-between items-center border-b border-gray-800 shrink-0">
             <div className="flex items-center text-white shrink-0 min-w-0">
@@ -770,7 +801,6 @@ export default function App() {
           </header>
         )}
 
-        {/* Main Content Area - Scrollable */}
         <main className="flex-1 overflow-hidden relative flex flex-col w-full bg-black">
           {currentView === 'map' && <MapComponent />}
           {currentView === 'list' && <PropertyList propertiesToShow={filteredProperties} emptyMessage="ไม่พบรายการที่ตรงกับเงื่อนไข" viewName="list" />}
@@ -786,7 +816,6 @@ export default function App() {
           {currentView === 'detail' && <PropertyDetailView />}
         </main>
 
-        {/* Bottom Navigation - Fixed Height */}
         {currentView !== 'detail' && currentView !== 'search' && currentView !== 'forgot-password' && currentView !== 'login' && currentView !== 'register' && currentView !== 'privacy' && currentView !== 'terms' && (
           <nav className="w-full bg-gray-900 border-t border-gray-800 pb-safe pt-2 px-2 flex justify-around items-center z-50 h-[72px] shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
             <button onClick={() => navigate('map')} className={`flex flex-col items-center flex-1 py-1 transition-colors ${currentView === 'map' ? 'text-blue-500' : 'text-gray-500 hover:text-gray-400'}`}>
@@ -813,7 +842,6 @@ export default function App() {
           </nav>
         )}
 
-        {/* Fullscreen Image Overlay */}
         {fullscreenImageIndex !== null && selectedProperty && selectedProperty.images && (
           <div className="fixed inset-0 bg-black z-[3000] flex flex-col animate-in fade-in duration-200">
             <div className="p-4 flex justify-between items-center z-10 absolute top-0 w-full bg-gradient-to-b from-black/70 to-transparent pt-10">
