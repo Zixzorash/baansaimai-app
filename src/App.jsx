@@ -8,16 +8,10 @@ import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Loc
 // 
 // 2. ลบส่วนของ Mock Component (ปุ่มจำลอง) ด้านล่างนี้ออกทั้งหมด
 // ==================================================================
-const GoogleLogin = ({ onSuccess }) => (
-  <button type="button" onClick={() => onSuccess({ credential: 'mock-google-token' })} className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl py-3 font-bold flex justify-center items-center hover:bg-gray-100 transition-colors shadow-sm">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-5 h-5 mr-2" />
-    เข้าสู่ระบบด้วย Google
-  </button>
-);
 // ==================================================================
 
 // --- 1. ตั้งค่า Google Apps Script URL ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw1kG5mtoBuMInf02UcTOPbkPiikUGOJPTU3RhPGhD2JnCdJC1AdeUYys0lQxYhsDyH/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyJ2CdhbCwBboucgG1CRSJxS6pWcTdG1XKhgo0zzViQWz-6IgubbpnAEYhBg7OgxyTT/exec";
 
 // --- CUSTOM LOGO COMPONENT ---
 const SaimaiLogo = ({ size = "normal" }) => {
