@@ -1,5 +1,3 @@
-จากโค๊ดของ App.jsx ด้านล่างนี้ ในหน้า ลงชื่อเข้าใช้ให้แก้ไข icon บนปุ่ม "เข้าสู่ระบบด้วย LINE" ให้แสดง ICON LINE บนปุ่ม
-
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, List, Heart, User, PlusCircle, Search, LogOut, Phone, Mail, Lock, Building, Map as MapIcon, Filter, X, Check, ChevronLeft, MessageCircle, Image as ImageIcon, DownloadCloud, UploadCloud, Trash2, Loader2, Home, KeyRound, Calendar, Navigation, ChevronRight, ShieldCheck, FileText } from 'lucide-react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
@@ -691,7 +689,7 @@ function MainApp() {
           </div>
 
           <button disabled={isLoading} onClick={loginWithLINE} className="w-full bg-[#00B900] text-white rounded-xl py-3 font-bold flex justify-center items-center hover:bg-[#00A000]">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/archive/4/41/20220419085334%21LINE_logo.svg" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />
+            <img src="https://jumpshare.com/embed/o7xOcdyc0HF6IgVlAgyX" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />
             {isLoading && loginMethod === 'line' ? 'กำลังเชื่อมต่อ LINE...' : 'เข้าสู่ระบบด้วย LINE'}
           </button>
         </div>
