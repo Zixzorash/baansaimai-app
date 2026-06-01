@@ -689,7 +689,7 @@ function MainApp() {
           </div>
 
           <button disabled={isLoading} onClick={loginWithLINE} className="w-full bg-[#00B900] text-white rounded-xl py-3 font-bold flex justify-center items-center hover:bg-[#00A000]">
-            <img src="/src/assets/line-icon.svg" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />
+            <img src="src/assets/line-icon.svg" alt="Line" className="w-6 h-6 mr-2 filter brightness-0 invert" />
             {isLoading && loginMethod === 'line' ? 'กำลังเชื่อมต่อ LINE...' : 'เข้าสู่ระบบด้วย LINE'}
           </button>
         </div>
